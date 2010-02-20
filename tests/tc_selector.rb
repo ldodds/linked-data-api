@@ -155,8 +155,7 @@ class SelectorTest < Test::Unit::TestCase
     p.add_to_hash(ctx.terms)
     selector = LinkedDataAPI::Selector.new()
     pattern = selector.create_graph_pattern(ctx)
-    assert_equal(1, pattern.split("\n").size)
-    assert_equal("?item <http://www.example.org/geography/localAuthority> [ <http://www.example.org/geography/code> \"00BX\" ].\n", pattern)              
+    assert_equal("?item <http://www.example.org/geography/localAuthority> [ <http://www.example.org/geography/code> \"00BX\". ].\n", pattern)              
   end
   
 end

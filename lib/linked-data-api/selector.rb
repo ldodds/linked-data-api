@@ -63,7 +63,7 @@ module LinkedDataAPI
         context.unreserved_params.sort.each do |entry|
           name = entry[0]
           value = entry[1]
-          pattern = add_to_pattern(pattern, context, name, value)                    
+          pattern = add_to_pattern(pattern, context, name, value)                 
         end
                 
         #Add contents of the api:filter property if specified
@@ -74,7 +74,7 @@ module LinkedDataAPI
             name, value = pair.split("=")
             #Only process this name from api:filter if its not in the query string
             if context.unreserved_params[name] == nil
-              pattern = add_to_pattern(pattern, context, name, value, true)              
+              pattern = add_to_pattern(pattern, context, name, value, true)           
             end                        
           end
         end
@@ -95,26 +95,46 @@ module LinkedDataAPI
     #value:: value of the variable to add
     #vars_allowed:: are variables allowed in the specification of the value (true only for api:filter)
     def add_to_pattern(pattern, context, name, value, vars_allowed=false, fail_if_name_not_bound=false)      
-      #TODO handle property paths
+      #foo.bar=1      
+      #foo.bar.baz=2   ?item <foo> [ <bar> [ <baz> "2" ] ]
+      if name.include?(".")
+         pattern = pattern + "?item "
+         path_elements = name.split(".")    
+         path_elements.slice(0..-2).each do |path|
+           #TODO what if term not bound?
+           term = context.terms[path]
+           pattern = pattern + "<#{term.uri}> [ " 
+         end     
+         #FIXME error checking
+         last_term = context.terms[path_elements.last]
+         val = create_value(context, last_term, value, vars_allowed)
+         pattern = pattern + "<#{last_term.uri}> #{val}."
+         path_elements.slice(0..-2).size.times do
+           pattern = pattern + " ].\n"
+         end
+         return pattern
+      end
       term = context.terms[name]
       #if we have a binding for the property then add it
       if term != nil
-        #also check if value is mapped, i.e. for classes
-        if context.terms[value] != nil
-          pattern = pattern + "?item <#{term.uri}> #{ context.terms[value].to_sparql(value) }.\n"
-        else
-          #Check whether the value is actually a named variable
-          #if it is then add the value from the query string if available
-          #TODO: need to support generic variables too...
-          if vars_allowed && value.match(/\{([^\/]+)\}/) != nil
-            varName = value.match(/\{([^\/]+)\}/)[1]
-            value = context.unreserved_params[varName]
-            #FIXME if parameter is not specified then fail
-            pattern = pattern + "?item <#{term.uri}> #{term.to_sparql(value)}.\n" unless value == nil
-          else
-            pattern = pattern + "?item <#{term.uri}> #{term.to_sparql(value)}.\n"
-          end
-        end
+         val = create_value(context, term, value, vars_allowed)
+         pattern = pattern + "?item <#{term.uri}> #{val}.\n" unless value == nil
+#        #also check if value is mapped, i.e. for classes
+#        if context.terms[value] != nil
+#          pattern = pattern + "?item <#{term.uri}> #{ context.terms[value].to_sparql(value) }.\n"
+#        else
+#          #Check whether the value is actually a named variable
+#          #if it is then add the value from the query string if available
+#          #TODO: need to support generic variables too...
+#          if vars_allowed && value.match(/\{([^\/]+)\}/) != nil
+#            varName = value.match(/\{([^\/]+)\}/)[1]
+#            value = context.unreserved_params[varName]
+#            #FIXME if parameter is not specified then fail
+#            pattern = pattern + "?item <#{term.uri}> #{term.to_sparql(value)}.\n" unless value == nil
+#          else
+#            pattern = pattern + "?item <#{term.uri}> #{term.to_sparql(value)}.\n"
+#          end
+#        end
       else        
         if fail_if_name_not_bound
           #FIXME throw exception
@@ -123,9 +143,30 @@ module LinkedDataAPI
           #TODO add a warning if we're handling an api:filter, as if a param in the filter isn't bound then the API config is wrong 
         end  
       end              
-      return pattern
-              
+      return pattern                    
     end    
+    
+    #context:: current context
+    #term:: the term whose value we're creating
+    #value:: the value, which may be a variable
+    def create_value(context, term, value, vars_allowed)
+      #also check if value is mapped, i.e. for classes
+      if context.terms[value] != nil
+        return context.terms[value].to_sparql(value)
+      else
+        #Check whether the value is actually a named variable
+        #if it is then add the value from the query string if available
+        #TODO: need to support generic variables too...
+        if vars_allowed && value.match(/\{([^\/]+)\}/) != nil
+          varName = value.match(/\{([^\/]+)\}/)[1]
+          return term.to_sparql( context.unreserved_params[varName] )
+        else
+          return term.to_sparql(value)
+        end
+      end  
+        
+    end  
+     
+       
   end  
-  
 end
