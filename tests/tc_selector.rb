@@ -157,5 +157,59 @@ class SelectorTest < Test::Unit::TestCase
     pattern = selector.create_graph_pattern(ctx)
     assert_equal("?item <http://www.example.org/geography/localAuthority> [ <http://www.example.org/geography/code> \"00BX\". ].\n", pattern)              
   end
+
+  def test_with_min_prefix
+    ctx = create_context_for("/test?min-size=10")    
+    p = LinkedDataAPI::Term.create_property("http://www.example.org/size", "size")
+    p.add_to_hash(ctx.terms)
+    selector = LinkedDataAPI::Selector.new()
+    pattern = selector.create_graph_pattern(ctx)
+    assert_equal("?item <http://www.example.org/size> ?size. FILTER ( ?size >= \"10\" ).\n", pattern)              
+  end
+
+  def test_with_max_prefix
+    ctx = create_context_for("/test?max-size=10")    
+    p = LinkedDataAPI::Term.create_property("http://www.example.org/size", "size")
+    p.add_to_hash(ctx.terms)
+    selector = LinkedDataAPI::Selector.new()
+    pattern = selector.create_graph_pattern(ctx)
+    assert_equal("?item <http://www.example.org/size> ?size. FILTER ( ?size <= \"10\" ).\n", pattern)              
+  end
+
+  def test_with_minEx_prefix
+    ctx = create_context_for("/test?minEx-size=10")    
+    p = LinkedDataAPI::Term.create_property("http://www.example.org/size", "size")
+    p.add_to_hash(ctx.terms)
+    selector = LinkedDataAPI::Selector.new()
+    pattern = selector.create_graph_pattern(ctx)
+    assert_equal("?item <http://www.example.org/size> ?size. FILTER ( ?size > \"10\" ).\n", pattern)              
+  end
+
+  def test_with_maxEx_prefix
+    ctx = create_context_for("/test?maxEx-size=10")    
+    p = LinkedDataAPI::Term.create_property("http://www.example.org/size", "size")
+    p.add_to_hash(ctx.terms)
+    selector = LinkedDataAPI::Selector.new()
+    pattern = selector.create_graph_pattern(ctx)
+    assert_equal("?item <http://www.example.org/size> ?size. FILTER ( ?size < \"10\" ).\n", pattern)              
+  end
   
+  def test_with_exists_prefix
+    ctx = create_context_for("/test?exists-size=10")    
+    p = LinkedDataAPI::Term.create_property("http://www.example.org/size", "size")
+    p.add_to_hash(ctx.terms)
+    selector = LinkedDataAPI::Selector.new()
+    pattern = selector.create_graph_pattern(ctx)
+    assert_equal("?item <http://www.example.org/size> ?size. FILTER ( bound(?size) ).\n", pattern)              
+  end
+
+  def test_with_name_prefix
+    ctx = create_context_for("/test?name-knows=Leigh")    
+    p = LinkedDataAPI::Term.create_property("http://xmlns.com/foaf/0.1/knows", "knows")
+    p.add_to_hash(ctx.terms)
+    selector = LinkedDataAPI::Selector.new()
+    pattern = selector.create_graph_pattern(ctx)
+    assert_equal("?item <http://xmlns.com/foaf/0.1/knows> ?knows. ?knows <http://www.w3.org/2000/01/rdf-schema#label> \"Leigh\".\n", pattern)              
+  end
+        
 end
