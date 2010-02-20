@@ -1,1 +1,50 @@
 Linked Data API
+
+Request
+
+Context
+ - variable bindings
+ - access to request, etc
+ - inherited? e.g. to handle shadowing
+
+Context includes:
+ - current request url, path, params, headers
+ - variables/bindings from api
+ - variables/bindings from endpoint
+
+ 
+API
+ - various defaults
+ - other objects needs access to it
+ 
+Endpoint
+ - endpoint being accessed
+ - matching based on path
+ 
+Selector
+ - a selector
+ - types
+ - factory
+ 
+Viewer
+ - a viewer
+ - types of viewer
+ - factory
+ 
+Formatter
+ - a formatter
+ - types of formatter
+ - factory for creating them 
+
+ 
+
+*Assembler
+ - for manufacturing from specific serialization
+ 
+ 
+ #match
+ endpoint = api.endpoint_for(request)
+ call = Call.new(request, endpoint)
+   #context = Context.new(request, endpoint)
+ resp = call.exec()
+  

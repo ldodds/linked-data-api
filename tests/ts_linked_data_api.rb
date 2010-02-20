@@ -1,0 +1,6 @@
+$:.unshift File.dirname(__FILE__)
+require 'test/unit'
+require 'tc_variable.rb'
+require 'tc_term.rb'
+require 'tc_context.rb'
+require 'tc_selector.rb'

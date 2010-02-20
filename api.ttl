@@ -1,0 +1,63 @@
+@prefix api: <http://www.example.org/linked-data-api/>.
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+@prefix space: <http://purl.org/net/schemas/space/>.
+@prefix test: <http://tests/>.
+test:api a api:API;
+  api:sparqlEndpoint <http://api.talis.com/stores/space/services/sparql>;
+  api:binding [
+    api:uri "http://purl.org/net/schemas/space/";
+    rdfs:label "space"
+  ];
+  api:binding [
+    api:uri "http://www.w3.org/2001/XMLSchema#";
+    rdfs:label "xsd"
+  ].  
+
+#List all of the disciplines
+test:res1 a api:Endpoint;
+  api:partOf test:api;
+  api:uri "/discipline";
+  api:view [
+    a api:View;
+    api:type space:Discipline;  
+  ].
+
+#List spacecraft launched BETWEEN two dates
+test:res2 a api:Endpoint;
+  api:partOf test:api;
+  api:uriTemplate "/spacecraft?from={from}&to={to}";
+  api:view [
+    a api:View;
+    api:select "SELECT ?item WHERE { ?item a space:Spacecraft; space:launch ?launch. ?launch space:launched ?date FILTER ( ?date >= \"?from\"^^xsd:date && ?date <= \"?to\"^^xsd:date )";
+    api:orderBy "?date"  
+  ].
+
+#Spacecraft launched AFTER a specific date
+test:res3 a api:Endpoint;
+  api:partOf test:api;
+  api:uriTemplate "/spacecraft?from={from}";
+  api:view [
+    a api:View;
+    api:select "SELECT ?item WHERE { ?item a space:Spacecraft; space:launch ?launch. ?launch space:launched ?date FILTER ( ?date >= \"?from\"^^xsd:date )}";
+    api:orderBy "?date"  
+  ].
+
+#TODO: Where we can select based on a token in the URI  
+#List the disciplines associated with the spacecraft with this ID
+test:res4 a api:Endpoint;
+  api:partOf test:api;
+  api:uriTemplate "/spacecraft/{id}/discipline";
+  api:view [
+    a api:View;
+    api:select "SELECT ?item WHERE { ?s space:internationalDesignator ?id; space:discipline ?item. }";  
+  ].
+  
+#TODO: spacecraft with a specific discipline
+#Where identifier derived from URI, i.e. no skos:notation
+test:res5 a api:Endpoint;
+  api:partOf test:api;
+  api:uri "/{item}/spacecraft";
+  api:view [
+    a api:View;
+    api:select "SELECT ?item WHERE { ?item a space:Discipline. ?s a space:Spacecraft; space:discipline ?item. }";  
+  ].
