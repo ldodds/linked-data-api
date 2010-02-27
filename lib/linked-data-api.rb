@@ -13,6 +13,7 @@ require 'linked-data-api/variable'
 require 'linked-data-api/term'
 require 'linked-data-api/context'
 require 'linked-data-api/selector'
+require 'linked-data-api/url_matcher'
 
 #require 'linked-data-api/context'
 #require 'linked-data-api/api'

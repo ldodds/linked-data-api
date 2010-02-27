@@ -5,12 +5,12 @@ module LinkedDataAPI
     NUMBERS = ["int", "float"].map{ |n| "http://www.w3.org/2001/XMLSchema\##{n}"}
     
     #Take a hash of namespace prefix bindings and return SPARQL prefix declaration 
-    def SPARQLUtil.namespaces_to_sparql_prefix(namespaces={})
-            
+    def SPARQLUtil.namespaces_to_sparql_prefix(namespaces={})            
       prefix = ""
-      @bindings.sort.each do |binding|
+      namespaces.sort.each do |binding|
         prefix = prefix + "PREFIX #{binding[0]}: <#{binding[1]}>\n"
       end
+      #prefix = prefix + "\n" unless prefix == ""
       return prefix        
     end
 

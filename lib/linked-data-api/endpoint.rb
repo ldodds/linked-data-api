@@ -33,6 +33,8 @@ module LinkedDataAPI
       #TODO make sure others are shadowed
       return @variables
     end
+    
+    
   end  
   
 end

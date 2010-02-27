@@ -14,6 +14,7 @@ module LinkedDataAPI
     attr_accessor :endpoint
     #Non-reserved query string parameters
     attr_reader :unreserved_params
+#    attr_reader :bare_param_names
     
     #TODO: properties and namespaces are being injected here, but could come from API?
     #Depends on whether we want to do schema loading 
@@ -27,10 +28,21 @@ module LinkedDataAPI
       @request.params.each do |name,value|
         @unreserved_params[name] = value if !name.start_with?("_")
       end
+#      @bare_param_names = []
+#      @unreserved_params.keys.each do |param|
+#        if param.include?(".")
+#          @bare_param_names << param.split(".")
+#        end
+#        if param.include?("-") && LinkedDataAPI::Selector::FILTER_PREFIXES.keys.include?( param.split("-")[0] )
+#          @bare_param_names << param.split(".")
+#        end
+#      end
+      
     end
     
-    #TODO This should return completely bound variables, suitable for injecting into SPARQL query
+    #This should return completely bound variables, suitable for injecting into SPARQL query
     #will involve altering based on type
+    #TODO: include variables from endpoint, api, and uri template
     def sparql_variables
       if @vars == nil
         #TODO need to include variables from current endpoint and those inherited from API

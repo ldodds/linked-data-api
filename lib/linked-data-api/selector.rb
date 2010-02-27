@@ -1,5 +1,6 @@
 module LinkedDataAPI
 
+  #TODO introduce a factory object for generating unique variables names to avoid clashes
   class Selector
   
     attr_accessor :parent
@@ -14,8 +15,7 @@ module LinkedDataAPI
       "max" => "FILTER ( ?obj <= ?val ).\n", 
       "minEx" => "FILTER ( ?obj > ?val ).\n", 
       "maxEx" => "FILTER ( ?obj < ?val ).\n", 
-      #FIXME resolve whether we need a FILTER for exists. And what about not exists?
-      "exists" => "FILTER ( bound(?obj) ).\n", 
+      "exists" => "FILTER ( !bound(?obj) ).\n", 
       "name" => "?obj <http://www.w3.org/2000/01/rdf-schema#label> ?val.\n"
     }
     
@@ -26,8 +26,8 @@ module LinkedDataAPI
     
     #create the select query to select the item
     #the hash is of prefix -> uri
-    def select_query(context, bind=true)
-      prefixes = LinkedDataAPI::SPARQLUtil.namespaces_to_sparql_prefix(context.namespaces) + "\n"
+    def select_query(context)
+      prefixes = LinkedDataAPI::SPARQLUtil.namespaces_to_sparql_prefix(context.namespaces)
       #select specified in url
       if context.request.params["_select"] != nil
         return prefixes + context.request.params["_select"]          
@@ -38,14 +38,22 @@ module LinkedDataAPI
         return prefixes + @select
       end
       
-      query = prefixes + "SELECT ?item \nWHERE {\n #{create_graph_pattern(context)}\n}\n#{create_order_by(context)}\n#{create_paging(context)}"
-      
-      if bind
-        query = Pho::Sparql::SparqlHelper.apply_initial_bindings(query, context.variables)
-      end
+      graph_pattern = create_graph_pattern(context)      
+      order_by = create_order_by(context)
+      #paging = create_paging(context)
+      query = prefixes + "SELECT ?item WHERE {\n#{graph_pattern}}"
+      query = query + "\n#{order_by}" unless order_by == ""
+      #TODO paging
+      #query = query + "\n#{paging}" unless paging == ""
+      #bind any remaining variables      
+      query = Pho::Sparql::SparqlHelper.apply_initial_bindings(query, context.unreserved_params)
       
       return query
       
+    end
+        
+    def create_paging(context)
+      reutrn nil      
     end
     
     def create_graph_pattern(context)
@@ -61,9 +69,11 @@ module LinkedDataAPI
       #otherwise we use api:filter
       if context.request.params["_where"] != nil
         pattern = pattern + context.request.params["_where"]
+        pattern = pattern + "." unless context.request.params["_where"].end_with?(".")     
       end      
-      if @where != nil && context.request.params["_where"] == nil
+      if @where != nil && context.request.params["_where"] == nil        
         pattern = pattern + @where
+        pattern = pattern + "." unless @where.end_with?(".") 
       end
       if @where == nil && context.request.params["_where"] == nil
         #construct patterns and filters
@@ -84,7 +94,7 @@ module LinkedDataAPI
             name, value = pair.split("=")
             #Only process this name from api:filter if its not in the query string
             if context.unreserved_params[name] == nil
-              pattern = add_to_pattern(pattern, context, name, value, true)           
+              pattern = add_to_pattern(pattern, context, name, value, :variables)           
             end                        
           end
         end
@@ -96,25 +106,89 @@ module LinkedDataAPI
         end
                 
       end
+      pattern = add_graph_pattern_for_sorting(context, pattern)
       return pattern
     end
 
+    #Extend the provided graph pattern to add additional patterns, if required to handle sort conditions
+    def add_graph_pattern_for_sorting(context, pattern)       
+       sortSpec, sparql = sort_specification(context)
+       return pattern if sortSpec == nil
+       #puts sortSpec, sparql
+       if sparql
+         return pattern         
+       else
+         properties = sortSpec.split(",")         
+         properties.each do |prop|     
+           prop.sub!("-", "")
+           varName = "?sort_#{prop.sub(".", "_")}"
+           #FIXME? don't redundantly add patterns if we've already got a specific test for this property
+           #if !context.bare_param_names.include?(prop)
+             pattern = add_to_pattern(pattern, context, prop, varName, :literal, false)
+           #end           
+         end
+       end
+       return pattern
+    end
+    
+    #Return the sort spec. Return value is a an array: [sortSpec, true|false]. True if this is direct SPARQL OrderCondition 
+    def sort_specification(context)
+      if context.request.params["_orderBy"] != nil
+        return context.request.params["_orderBy"], true
+      end
+      if context.request.params["_sort"] != nil
+        return context.request.params["_sort"], false
+      end
+      if @order_by != nil
+        return @order_by, true
+      end
+      return @sort, false
+    end
+    
+    #Add any additional patterns required to support ordering
+    #pattern:: current pattern being assembled
+    #context:: the current execution context
+    def create_order_by(context)
+      sortSpec, sparql = sort_specification(context)
+      return "" if sortSpec == nil
+      if sparql
+        return "ORDER BY " + sortSpec
+      else
+        clause = "ORDER BY "
+        properties = sortSpec.split(",")
+        properties.each do |prop|
+          #FIXME
+          varName = "?sort_#{prop.sub("-", "").sub(".", "_")}"
+          #FIXME? don't redundantly add patterns if we've already got a specific test for this property
+          #if !context.bare_param_names.include?(prop)
+            if prop.start_with?("-")
+              clause = clause + "DESC(#{varName}) "
+            else
+              clause = clause + "ASC(#{varName}) "
+            end
+            
+          #end           
+        end
+        return clause
+      end
+    end
+    
     #pattern:: the current pattern being assembled
     #context:: the current execution context
     #name:: name of the variable to add
     #value:: value of the variable to add
-    #vars_allowed:: are variables allowed in the specification of the value (true only for api:filter)
-    def add_to_pattern(pattern, context, name, value, vars_allowed=false, fail_if_name_not_bound=false)      
+    #values:: :literal, :variables, :fixed is provided value to be included literally, are variables allowed in the specification of the value (true only for api:filter)
+    def add_to_pattern(pattern, context, name, value, values=:fixed, fail_if_name_not_bound=false)      
       if name.include?(".")
-        return add_property_path_to_pattern(pattern, context, name, value, vars_allowed, fail_if_name_not_bound)
+        return add_property_path_to_pattern(pattern, context, name, value, values, fail_if_name_not_bound)
       end
       if name.include?("-") && FILTER_PREFIXES.keys.include?( name.split("-")[0] )
-        return add_filter_pattern(pattern, context, name, value, vars_allowed, fail_if_name_not_bound)
+        return add_filter_pattern(pattern, context, name, value, values, fail_if_name_not_bound)
       end
       term = context.terms[name]
       #if we have a binding for the property then add it
       if term != nil
-         val = create_value(context, term, value, vars_allowed)
+         val = create_value(context, term, value, values)
          pattern = pattern + "?item <#{term.uri}> #{val}.\n" unless value == nil
       else        
         if fail_if_name_not_bound
@@ -127,19 +201,30 @@ module LinkedDataAPI
       return pattern                    
     end    
 
-    def add_filter_pattern(pattern, context, name, value, vars_allowed=false, fail_if_name_not_bound=false)
+    def add_filter_pattern(pattern, context, name, value, values=:fixed, fail_if_name_not_bound=false)
        prefix = name.split("-")[0]
-       name = name.split("-")[1]
-       term = context.terms[name]
-       val = create_value(context, term, value, vars_allowed)
-       pattern = pattern + "?item <#{term.uri}> ?#{name}. "
-       template = FILTER_PREFIXES[prefix]
-       pattern = pattern + template.sub("?obj", "?#{name}").sub("?val", val)
+       propertyName = name.split("-")[1]
+       safeName = name.sub("-", "_")
+       term = context.terms[propertyName]
+       val = create_value(context, term, value, values)
+       if prefix == "exists"
+         if value == "true"
+           pattern = pattern + "?item <#{term.uri}> ?#{safeName}.\n"
+         else
+           pattern = pattern + "OPTIONAL { ?item <#{term.uri}> ?#{safeName}. } "
+           template = FILTER_PREFIXES[prefix]
+           pattern = pattern + template.sub("?obj", "?#{safeName}").sub("?val", val)             
+         end
+       else
+         pattern = pattern + "?item <#{term.uri}> ?#{safeName}. "         
+         template = FILTER_PREFIXES[prefix]
+         pattern = pattern + template.sub("?obj", "?#{safeName}").sub("?val", val)           
+       end
        return pattern
     end
     
     #foo.bar.baz=2   ?item <foo> [ <bar> [ <baz> "2" ] ]            
-    def add_property_path_to_pattern(pattern, context, name, value, vars_allowed=false, fail_if_name_not_bound=false)
+    def add_property_path_to_pattern(pattern, context, name, value, values=:fixed, fail_if_name_not_bound=false)
       pattern = pattern + "?item "
       path_elements = name.split(".")    
       path_elements.slice(0..-2).each do |path|
@@ -149,7 +234,7 @@ module LinkedDataAPI
       end     
       #FIXME error checking
       last_term = context.terms[path_elements.last]
-      val = create_value(context, last_term, value, vars_allowed)
+      val = create_value(context, last_term, value, values)
       pattern = pattern + "<#{last_term.uri}> #{val}."
       path_elements.slice(0..-2).size.times do
         pattern = pattern + " ].\n"
@@ -160,7 +245,7 @@ module LinkedDataAPI
     #context:: current context
     #term:: the term whose value we're creating
     #value:: the value, which may be a variable
-    def create_value(context, term, value, vars_allowed)
+    def create_value(context, term, value, values)
       #also check if value is mapped, i.e. for classes
       if context.terms[value] != nil
         return context.terms[value].to_sparql(value)
@@ -168,16 +253,17 @@ module LinkedDataAPI
         #Check whether the value is actually a named variable
         #if it is then add the value from the query string if available
         #TODO: need to support generic variables too...
-        if vars_allowed && value.match(/\{([^\/]+)\}/) != nil
+        if values == :variables && value.match(/\{([^\/]+)\}/) != nil
           varName = value.match(/\{([^\/]+)\}/)[1]
           return term.to_sparql( context.unreserved_params[varName] )
+        elsif values == :literal
+          return value
         else
           return term.to_sparql(value)
         end
       end  
         
-    end  
-     
+    end       
        
   end  
 end
