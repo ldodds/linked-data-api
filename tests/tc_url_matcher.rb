@@ -46,22 +46,39 @@ class LinkedDataAPI::URLMatcherTest < Test::Unit::TestCase
 
   def test_match_with_template_and_supplied_params
     assert_equal( true, 
-    LinkedDataAPI::URLMatcher.match?("/school/primary", "/school/type", {"foo" => "bar", "abc" => "def" })
+    LinkedDataAPI::URLMatcher.match?("/school/primary", "/school/{type}", {"foo" => "bar", "abc" => "def" })
     )
     assert_equal( true, 
-    LinkedDataAPI::URLMatcher.match?("/school/primary/other", "/school/{type}", {"foo" => "bar", "abc" => "def" })
+    LinkedDataAPI::URLMatcher.match?("/school/primary/other", "/school/{type}/other", {"foo" => "bar", "abc" => "def" })
     )
   end
 
   def test_match_with_template_and_required_param
     assert_equal( true, 
-      LinkedDataAPI::URLMatcher.match?("/school/primary?foo=bar", "/school/{type}?foo={id}", {"foo" => "bar", "abc" => "def" }) )    
+      LinkedDataAPI::URLMatcher.match?("/school/primary", "/school/{type}?foo={id}", {"foo" => "bar", "abc" => "def" }) )
+    assert_equal( false, 
+      LinkedDataAPI::URLMatcher.match?("/school/primary", "/school/{type}?foo={id}", {"abc" => "def" }) )    
   end
   
   def test_match_with_template_and_reserved_param
     assert_equal( true, 
-      LinkedDataAPI::URLMatcher.match?("/school/primary?_sort=size", "/school/{ty[e}", {"_sort" => "size" }) )    
+      LinkedDataAPI::URLMatcher.match?("/school/primary", "/school/{style}", {"_sort" => "size" }) )
   end
   
+  def test_extract
+    vars = LinkedDataAPI::URLMatcher.extract("/school/primary", "/school/primary", {})
+    assert_equal( true, vars.empty?)
+
+    vars = LinkedDataAPI::URLMatcher.extract("/school/primary", "/school/{type}", {})
+    assert_equal( "primary", vars["type"] )
+
+    vars = LinkedDataAPI::URLMatcher.extract("/school/primary/other", "/school/{type}/other", {})
+    assert_equal( "primary", vars["type"] )
+
+    vars = LinkedDataAPI::URLMatcher.extract("/school/primary/closed", "/school/{type}/{status}", {})
+    assert_equal( "primary", vars["type"] )
+    assert_equal( "closed", vars["status"] )
+                  
+  end
   
 end

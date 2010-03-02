@@ -27,10 +27,33 @@ module LinkedDataAPI
     def URLMatcher.match?(url, template, params, ignore=[])      
       normalized_url = normalize_url(url, params, ignore)
       normalized_template = normalize_template(template)
-      #TODO path variables in templates
-      return normalized_url == normalized_template
+      
+      if normalized_template.include?("{")
+        compiled_template = normalized_template.gsub(/\{[^\/]+\}/, "([^\/]+)").gsub("/", "\/") + "$"
+        if compiled_template.include?("?")
+          return normalized_url.match(compiled_template) != nil
+        else
+          return normalized_url.split("?")[0].match(compiled_template) != nil
+        end              
+      else
+        return normalized_url == normalized_template  
+      end
     end
-          
+    
+    def URLMatcher.extract(url, template, params, ignore=[])
+      vars = {}
+      if template.include?("{") && URLMatcher.match?(url, template, params, ignore)
+        normalized_url = normalize_url(url, params, ignore)
+        normalized_template = normalize_template(template)
+        compiled_template = normalized_template.gsub(/\{[^\/]+\}/, "([^\/]+)").gsub("/", "\/") + "$"
+        varnames = normalized_template.scan(/\{([^\/]+)\}/).flatten
+        matches = normalized_url.match(compiled_template)
+        varnames.each_with_index do |name, i|
+          vars[name] = matches.captures[i]
+        end
+      end
+      return vars
+    end      
   end  
   
 end
