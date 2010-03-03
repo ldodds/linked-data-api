@@ -40,12 +40,13 @@ module LinkedDataAPI
       
       graph_pattern = create_graph_pattern(context)      
       order_by = create_order_by(context)
-      #paging = create_paging(context)
+      paging = create_paging(context)
       query = prefixes + "SELECT ?item WHERE {\n#{graph_pattern}}"
       query = query + "\n#{order_by}" unless order_by == ""
-      #TODO paging
-      #query = query + "\n#{paging}" unless paging == ""
-      #bind any remaining variables      
+      query = query + "\n#{paging}"
+        
+      #bind any remaining variables
+      #TODO this is only unreserved_params what about the others?      
       query = Pho::Sparql::SparqlHelper.apply_initial_bindings(query, context.unreserved_params)
       
       return query
@@ -53,7 +54,14 @@ module LinkedDataAPI
     end
         
     def create_paging(context)
-      reutrn nil      
+      page_size = context.page_size
+      offset = nil
+      page_num = context.request.params["_page"]
+      if page_num != nil && page_num.to_i > 1
+        offset = (page_size * (page_num.to_i -1) ) + 1
+      end
+      return "LIMIT #{page_size}" if offset == nil
+      return "LIMIT #{page_size} OFFSET #{offset}"
     end
     
     def create_graph_pattern(context)

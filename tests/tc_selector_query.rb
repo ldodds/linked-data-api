@@ -17,14 +17,14 @@ class SelectorQueryTest < Test::Unit::TestCase
     ctx = create_context_for("/foo")
     selector = LinkedDataAPI::Selector.new()
     query = selector.select_query(ctx)
-    assert_equal("SELECT ?item WHERE {\n?item ?property ?value.\n}", query)    
+    assert_equal("SELECT ?item WHERE {\n?item ?property ?value.\n}\nLIMIT 10", query)    
   end
 
   def test_select_query_with_where
     ctx = create_context_for("/foo?_where=WHERE")
     selector = LinkedDataAPI::Selector.new()
     query = selector.select_query(ctx)
-    assert_equal("SELECT ?item WHERE {\nWHERE.}", query)    
+    assert_equal("SELECT ?item WHERE {\nWHERE.}\nLIMIT 10", query)    
   end
     
   def test_select_query_with_prefixes
@@ -32,7 +32,7 @@ class SelectorQueryTest < Test::Unit::TestCase
     ctx.namespaces["foaf"] = "http://xmlns.com/foaf/0.1/"
     selector = LinkedDataAPI::Selector.new()
     query = selector.select_query(ctx)
-    assert_equal("PREFIX foaf: <http://xmlns.com/foaf/0.1/>\nSELECT ?item WHERE {\n?item ?property ?value.\n}", query)    
+    assert_equal("PREFIX foaf: <http://xmlns.com/foaf/0.1/>\nSELECT ?item WHERE {\n?item ?property ?value.\n}\nLIMIT 10", query)    
   end
     
   def test_select_query_with_property
@@ -41,7 +41,7 @@ class SelectorQueryTest < Test::Unit::TestCase
     p.add_to_hash(ctx.terms)
     selector = LinkedDataAPI::Selector.new()
     query = selector.select_query(ctx)
-    assert_equal("SELECT ?item WHERE {\n?item <http://xmlns.com/foaf/0.1/name> \"Leigh\".\n}", query)      
+    assert_equal("SELECT ?item WHERE {\n?item <http://xmlns.com/foaf/0.1/name> \"Leigh\".\n}\nLIMIT 10", query)      
   end
 
   def test_select_with_where_and_orderby
@@ -58,6 +58,7 @@ class SelectorQueryTest < Test::Unit::TestCase
     assert_equal("SELECT ?item WHERE {", lines[2])
     assert_equal("?item a foaf:Person; ex:age ?age.}", lines[3])
     assert_equal("ORDER BY DESC(?age)", lines[4])
+    assert_equal("LIMIT 10", lines[5])    
   end  
   
   def test_select_query_with_asc_sort
@@ -72,12 +73,13 @@ class SelectorQueryTest < Test::Unit::TestCase
     selector.filter="type=Person"
     query = selector.select_query(ctx)
     lines = query.split("\n")
-    assert_equal(5, lines.size)
+    assert_equal(6, lines.size)
     assert_equal("SELECT ?item WHERE {", lines[0])
     assert_equal("?item <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://xmlns.com/foaf/0.1/Person>.", lines[1])      
     assert_equal("?item <http://www.example.org/age> ?sort_age.", lines[2])
     assert_equal("}", lines[3])
-    assert_equal("ORDER BY ASC(?sort_age)", lines[4].sub(/ $/,""))    
+    assert_equal("ORDER BY ASC(?sort_age)", lines[4].sub(/ $/,""))
+    assert_equal("LIMIT 10", lines[5])    
   end  
 
   def test_select_query_with_desc_sort
@@ -92,12 +94,13 @@ class SelectorQueryTest < Test::Unit::TestCase
     selector.filter="type=Person"
     query = selector.select_query(ctx)
     lines = query.split("\n")
-    assert_equal(5, lines.size)
+    assert_equal(6, lines.size)
     assert_equal("SELECT ?item WHERE {", lines[0])
     assert_equal("?item <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://xmlns.com/foaf/0.1/Person>.", lines[1])      
     assert_equal("?item <http://www.example.org/age> ?sort_age.", lines[2])
     assert_equal("}", lines[3])
-    assert_equal("ORDER BY DESC(?sort_age)", lines[4].sub(/ $/,""))    
+    assert_equal("ORDER BY DESC(?sort_age)", lines[4].sub(/ $/,""))
+    assert_equal("LIMIT 10", lines[5])        
   end  
 
   def test_select_query_with_combined_sort
@@ -114,13 +117,14 @@ class SelectorQueryTest < Test::Unit::TestCase
     selector.filter="type=Person"
     query = selector.select_query(ctx)
     lines = query.split("\n")
-    assert_equal(6, lines.size)
+    assert_equal(7, lines.size)
     assert_equal("SELECT ?item WHERE {", lines[0])
     assert_equal("?item <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://xmlns.com/foaf/0.1/Person>.", lines[1])      
     assert_equal("?item <http://www.example.org/age> ?sort_age.", lines[2])
     assert_equal("?item <http://www.example.org/shoeSize> ?sort_shoeSize.", lines[3])
     assert_equal("}", lines[4])
-    assert_equal("ORDER BY ASC(?sort_age) DESC(?sort_shoeSize)", lines[5].sub(/ $/,""))    
+    assert_equal("ORDER BY ASC(?sort_age) DESC(?sort_shoeSize)", lines[5].sub(/ $/,""))
+    assert_equal("LIMIT 10", lines[6])        
   end
   
           

@@ -27,5 +27,72 @@ class ContextTest < Test::Unit::TestCase
     assert_equal("\"2009-10-01\"^^<http://www.w3.org/2001/XMLSchema#date>", vars["c"])    
   end
   
+  def test_default_page_size()
+    env = LinkedDataAPI::MockRequest.env_for("/test?a=b&c=d")
+    req = Rack::Request.new(env)
+    api = LinkedDataAPI::API.new()    
+    endpoint = LinkedDataAPI::Endpoint.new(api)
+    ctx = LinkedDataAPI::Context.new(req, endpoint)
+    assert_equal(10, ctx.page_size())      
+  end
+  
+  def test_default_page_size_from_endpoint()
+    env = LinkedDataAPI::MockRequest.env_for("/test?a=b&c=d")
+    req = Rack::Request.new(env)
+    api = LinkedDataAPI::API.new()    
+    endpoint = LinkedDataAPI::Endpoint.new(api)
+    endpoint.default_page_size = 11
+    ctx = LinkedDataAPI::Context.new(req, endpoint)
+    assert_equal(11, ctx.page_size())    
+  end
+  
+  def test_default_page_size_from_request()
+    env = LinkedDataAPI::MockRequest.env_for("/test?a=b&c=d&_pageSize=12")
+    req = Rack::Request.new(env)
+    api = LinkedDataAPI::API.new()    
+    endpoint = LinkedDataAPI::Endpoint.new(api)
+    endpoint.default_page_size = 11
+    ctx = LinkedDataAPI::Context.new(req, endpoint)
+    assert_equal(12, ctx.page_size())    
+  end
+  
+  def test_max_page_size()
+    env = LinkedDataAPI::MockRequest.env_for("/test?a=b&c=d")
+    req = Rack::Request.new(env)
+    api = LinkedDataAPI::API.new()    
+    endpoint = LinkedDataAPI::Endpoint.new(api)
+    ctx = LinkedDataAPI::Context.new(req, endpoint)
+    assert_equal(nil, ctx.max_page_size())          
+  end
+  
+  def test_max_page_size_from_endpoint()
+    env = LinkedDataAPI::MockRequest.env_for("/test?a=b&c=d")
+    req = Rack::Request.new(env)
+    api = LinkedDataAPI::API.new()    
+    endpoint = LinkedDataAPI::Endpoint.new(api)
+    endpoint.max_page_size = 13
+    ctx = LinkedDataAPI::Context.new(req, endpoint)
+    assert_equal(13, ctx.max_page_size())          
+  end
+  
+  def test_max_page_size_from_api()
+    env = LinkedDataAPI::MockRequest.env_for("/test?a=b&c=d")
+    req = Rack::Request.new(env)
+    api = LinkedDataAPI::API.new()    
+    api.max_page_size = 12
+    endpoint = LinkedDataAPI::Endpoint.new(api)
+    ctx = LinkedDataAPI::Context.new(req, endpoint)
+    assert_equal(12, ctx.max_page_size())          
+  end    
+  
+  def test_cannot_exceed_max_page_size_from_api()
+    env = LinkedDataAPI::MockRequest.env_for("/test?a=b&c=d&_pageSize=22")
+    req = Rack::Request.new(env)
+    api = LinkedDataAPI::API.new()    
+    api.max_page_size = 12
+    endpoint = LinkedDataAPI::Endpoint.new(api)
+    ctx = LinkedDataAPI::Context.new(req, endpoint)
+    assert_equal(12, ctx.page_size())          
+  end
   
 end

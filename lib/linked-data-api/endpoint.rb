@@ -16,6 +16,9 @@ module LinkedDataAPI
     attr_accessor :formatters
     #List of Variables
     attr_accessor :variables
+    #Default page size
+    attr_accessor :default_page_size
+    attr_accessor :max_page_size
     
     def initialize(api=nil, uriTemplate=nil, selector=nil, itemTemplate=nil) # :yield: self
         @api = api
@@ -34,7 +37,15 @@ module LinkedDataAPI
       return @variables
     end
     
+    def default_page_size()
+      return @api.default_page_size if @default_page_size == nil && api != nil
+      return @default_page_size
+    end
     
+    def max_page_size()
+      return @api.max_page_size if @max_page_size == nil && api != nil
+      return @max_page_size
+    end
   end  
   
 end
