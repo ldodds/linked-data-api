@@ -6,10 +6,10 @@ require 'rack'
 
 class SelectorQueryTest < Test::Unit::TestCase
   
-  def create_context_for(path)
+  def create_context_for(path, endpoint=nil)
     env = LinkedDataAPI::MockRequest.env_for(path)
     req = Rack::Request.new(env)    
-    ctx = LinkedDataAPI::Context.new(req, nil)    
+    ctx = LinkedDataAPI::Context.new(req, endpoint)    
     return ctx    
   end
 
@@ -126,6 +126,24 @@ class SelectorQueryTest < Test::Unit::TestCase
     assert_equal("ORDER BY ASC(?sort_age) DESC(?sort_shoeSize)", lines[5].sub(/ $/,""))
     assert_equal("LIMIT 10", lines[6])        
   end
-  
+ 
+  def test_select_query_with_templated_url
+   endpoint = LinkedDataAPI::Endpoint.new( LinkedDataAPI::API.new() )
+   endpoint.uri = "/school/{schooltype}" 
+   ctx = create_context_for("/school/primary", endpoint)
+   p = LinkedDataAPI::Term.create_property("http://www.w3.org/1999/02/22-rdf-syntax-ns#type", "type")
+   p.add_to_hash(ctx.terms)     
+   p = LinkedDataAPI::Term.create_class("http://www.example.org/Primary", "primary")
+   p.add_to_hash(ctx.terms)
+   selector = LinkedDataAPI::Selector.new()
+   selector.filter="type={schooltype}"
+   query = selector.select_query(ctx)
+   lines = query.split("\n")
+   assert_equal(4, lines.size)
+   assert_equal("SELECT ?item WHERE {", lines[0])
+   assert_equal("?item <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.example.org/Primary>.", lines[1])      
+   assert_equal("}", lines[2])
+   assert_equal("LIMIT 10", lines[3])           
+  end 
           
 end

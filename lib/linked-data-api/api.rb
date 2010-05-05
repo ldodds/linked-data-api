@@ -3,8 +3,9 @@ module LinkedDataAPI
   #An API over a Linked Data source
   class API
     
-    attr_accessor :sparql_endpoint, :base, :content_negotiation, :variables, :endpoints
+    attr_accessor :sparql_endpoint, :base, :content_negotiation, :endpoints
     attr_accessor :default_page_size, :max_page_size
+    attr_reader :variables
     
     #Create an api for a specific sparql endpoint. Default content negotation type is based on suffix (:suffix). 
     #Alternate is :parameter
@@ -12,7 +13,7 @@ module LinkedDataAPI
       @sparql_endpoint = sparql_endpoint
       @base = base
       @content_negotiation = content_negotiation 
-      @variables = []
+      @variables = {}
       @endpoints = []
       @default_page_size = 10
       yield self if block_given?

@@ -95,4 +95,19 @@ class ContextTest < Test::Unit::TestCase
     assert_equal(12, ctx.page_size())          
   end
   
+  def test_interpolate()
+    vars = {}
+    vars["a"] = "one"
+    vars["b"] = "two"
+    vars["c"] = "{a}"
+    vars["d"] = "{a}/{b}"
+    vars["e"] = "some{d}"
+    
+    interpolated = LinkedDataAPI::Context.interpolate(vars)
+    assert_equal("one", interpolated["a"])
+    assert_equal("two", interpolated["b"])
+    assert_equal("one", interpolated["c"])
+    assert_equal("one/two", interpolated["d"])
+    assert_equal("someone/two", interpolated["e"])
+  end
 end

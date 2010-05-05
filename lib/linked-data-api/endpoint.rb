@@ -3,7 +3,7 @@ module LinkedDataAPI
   class Endpoint
   
     #uri template for matching
-    attr_accessor :uriTemplate
+    attr_accessor :uri
     #item template for building uris
     attr_accessor :itemTemplate
     #reference to api
@@ -15,26 +15,29 @@ module LinkedDataAPI
     #List of Formatters
     attr_accessor :formatters
     #List of Variables
-    attr_accessor :variables
+    attr_reader :variables
     #Default page size
     attr_accessor :default_page_size
     attr_accessor :max_page_size
     
-    def initialize(api=nil, uriTemplate=nil, selector=nil, itemTemplate=nil) # :yield: self
+    def initialize(api=nil, uri=nil, selector=nil, itemTemplate=nil) # :yield: self
         @api = api
-        @uriTemplate = uriTemplate
+        @uri = uri
         @selector = selector
         @itemTemplate = itemTemplate
-        @variables = []
+        @variables = {}
         @formatters = []        
         #TODO default built in viewer
         #TODO default built in formatter(s)
         yield self if block_given?      
     end
     
+    #Returned variables declared on this endpoint, and any bound to the API
     def variables()
-      #TODO make sure others are shadowed
-      return @variables
+      vars = {}
+      vars = vars.merge( @api.variables() ) unless @api == nil
+      vars = vars.merge( @variables )  
+      return vars
     end
     
     def default_page_size()

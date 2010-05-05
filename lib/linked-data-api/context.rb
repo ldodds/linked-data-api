@@ -15,6 +15,19 @@ module LinkedDataAPI
     #Non-reserved query string parameters
     attr_reader :unreserved_params
     
+    def Context.interpolate(h)
+      interpolated = {}
+      h.each do |k,v|        
+        matched = v.match(/\{([^\/]+)\}/)
+        if matched != nil
+          interpolated[k] = h[matched[1]]
+        else
+          interpolated[k] = v  
+        end
+      end
+      return interpolated
+    end
+    
     #TODO: properties and namespaces are being injected here, but could come from API?
     #Depends on whether we want to do schema loading 
     def initialize(request, endpoint, terms={}, namespaces={}) # :yield: self      
@@ -29,21 +42,33 @@ module LinkedDataAPI
       end      
     end
     
+    #return all current bound variables
+    #Order of precedence:
+    #Query String, URI Template, Endpoint, API
+    def variables
+      if @vars == nil
+        @vars = {}
+        @vars = @endpoint.variables unless @endpoint == nil
+        #TODO ignores?
+        @vars = @vars.merge( LinkedDataAPI::URLMatcher::extract(request.path, @endpoint.uri, request.params) ) unless @endpoint == nil        
+        @vars = @vars.merge( request.params )
+        @vars = Context.interpolate(@vars)       
+      end
+      return @vars
+    end
+    
+    
+    
     #This should return completely bound variables, suitable for injecting into SPARQL query
     #will involve altering based on type
     def sparql_variables
-      if @vars == nil
-        #TODO need to include variables from current endpoint and those inherited from API
-        #TODO include variables from uri template
-        query_vars = {}
-        request.params.each do |k,v|
-          p = @terms[k]          
-          query_vars[k] = LinkedDataAPI::SPARQLUtil.sparql_value(v) if p == nil
-          query_vars[k] = p.to_sparql(v) if p != nil
-        end
-        @vars = query_vars        
+      sparql_vars = {}
+      variables().each do |k,v|
+        p = @terms[k]          
+        sparql_vars[k] = LinkedDataAPI::SPARQLUtil.sparql_value(v) if p == nil
+        sparql_vars[k] = p.to_sparql(v) if p != nil
       end
-      return @vars
+      return sparql_vars
     end
     
     def max_page_size()

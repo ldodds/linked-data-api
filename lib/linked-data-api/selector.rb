@@ -86,7 +86,7 @@ module LinkedDataAPI
       if @where == nil && context.request.params["_where"] == nil
         #construct patterns and filters
         
-        #Add bound request parameters to pattern
+        #Add bound request parameters from query string to pattern
         #Sort here is for some consistency when testing
         context.unreserved_params.sort.each do |entry|
           name = entry[0]
@@ -101,9 +101,10 @@ module LinkedDataAPI
           @filter.split("&").sort.each do |pair|
             name, value = pair.split("=")
             #Only process this name from api:filter if its not in the query string
+            #This is because we've added those above 
             if context.unreserved_params[name] == nil
               pattern = add_to_pattern(pattern, context, name, value, :variables)           
-            end                        
+            end
           end
         end
 
